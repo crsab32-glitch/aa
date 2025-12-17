@@ -1,0 +1,5 @@
+{
+  "name": "GestaoMultas",
+  "description": "A comprehensive fleet management system for drivers, vehicles, and fines with AI-powered document extraction.",
+  "requestFramePermissions": []
+}
