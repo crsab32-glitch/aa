@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Driver, Vehicle, Fine, DetranCode } from "../types";
 import * as XLSX from "xlsx";
 
-// Initialize Gemini
+// Initialize Gemini com o modelo correto conforme as diretrizes
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const fileToPart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
@@ -55,23 +55,23 @@ export const extractDriversFromFiles = async (files: File[]): Promise<Partial<Dr
   for (const file of files) {
     try {
       let contentPart: any;
-      let prompt = `Extraia dados da CNH (Carteira Nacional de Habilitação) deste documento. 
-      Retorne um JSON contendo uma lista de objetos com as chaves: 
-      - 'name': Nome completo
-      - 'cpf': CPF (apenas números)
-      - 'cnhNumber': Número de Registro
-      - 'validityDate': Data de Validade no formato YYYY-MM-DD
-      Caso seja um PDF, leia todas as páginas.`;
+      let prompt = `Analise este documento (CNH Brasileira) e extraia os dados. 
+      Retorne OBRIGATORIAMENTE um ARRAY JSON de objetos com:
+      - 'name': Nome completo do condutor
+      - 'cpf': Apenas os números do CPF
+      - 'cnhNumber': Número de Registro da CNH
+      - 'validityDate': Data de validade no formato YYYY-MM-DD
+      Mesmo que seja PDF ou foto, faça o OCR completo.`;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
-        contentPart = { text: `Data from Excel/CSV:\n${textData}` };
+        contentPart = { text: `Dados de Excel:\n${textData}` };
       } else {
         contentPart = await fileToPart(file);
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: {
             parts: [
                 contentPart,
@@ -89,18 +89,23 @@ export const extractDriversFromFiles = async (files: File[]): Promise<Partial<Dr
                     cpf: { type: Type.STRING },
                     cnhNumber: { type: Type.STRING },
                     validityDate: { type: Type.STRING }
-                }
+                },
+                required: ["name", "cpf"]
             }
           }
         }
       });
       
       if (response.text) {
-        const data = JSON.parse(response.text);
-        if (Array.isArray(data)) results.push(...data);
+        try {
+          const data = JSON.parse(response.text);
+          if (Array.isArray(data)) results.push(...data);
+        } catch (e) {
+          console.error("Erro no parse do JSON da CNH", e);
+        }
       }
     } catch (error) {
-      console.error("Erro ao extrair motorista", error);
+      console.error("Erro na API do Gemini para CNH", error);
     }
   }
   return results;
@@ -112,28 +117,26 @@ export const extractVehiclesFromFiles = async (files: File[]): Promise<Partial<V
   for (const file of files) {
     try {
       let contentPart: any;
-      let prompt = `Extraia dados do CRLV (Certificado de Registro e Licenciamento de Veículo) brasileiro. 
-      Este documento pode ser uma foto ou um PDF (CRLV-e).
-      Procure pelos campos:
-      - 'plate': Placa (ex: ABC1234 ou ABC1D23)
-      - 'renavam': Código RENAVAM (apenas números)
-      - 'chassis': Chassi (17 caracteres)
-      - 'brand': Marca
-      - 'model': Modelo
-      - 'year': Ano Modelo (use o ano mais recente se houver Fabricação/Modelo)
+      let prompt = `Analise este CRLV (Documento de Veículo) Digital ou físico. 
+      Extraia os campos e retorne um ARRAY JSON:
+      - 'plate': Placa do veículo (ex: ABC1234 ou ABC1D23)
+      - 'renavam': Número do RENAVAM (apenas dígitos)
+      - 'chassis': Número do Chassi
+      - 'brand': Marca do fabricante
+      - 'model': Nome do modelo
+      - 'year': Ano de Fabricação ou Modelo (numérico)
       
-      Importante: Se o campo 'MARCA/MODELO' estiver junto, separe-os.
-      Retorne um ARRAY JSON.`;
+      IMPORTANTE: Se o documento for PDF, verifique todas as páginas. A Placa e o Renavam são fundamentais.`;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
-        contentPart = { text: `Dados de Excel:\n${textData}` };
+        contentPart = { text: `Dados:\n${textData}` };
       } else {
         contentPart = await fileToPart(file);
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: {
             parts: [
                 contentPart,
@@ -153,24 +156,29 @@ export const extractVehiclesFromFiles = async (files: File[]): Promise<Partial<V
                     brand: { type: Type.STRING },
                     model: { type: Type.STRING },
                     year: { type: Type.STRING }
-                }
+                },
+                required: ["plate", "renavam"]
             }
           }
         }
       });
       
       if (response.text) {
-        const data = JSON.parse(response.text);
-        if (Array.isArray(data)) {
-            const processed = data.map(v => ({
-                ...v,
-                year: v.year ? parseInt(String(v.year).split('/')[String(v.year).split('/').length - 1]) : new Date().getFullYear()
-            }));
-            results.push(...processed);
+        try {
+          const data = JSON.parse(response.text);
+          if (Array.isArray(data)) {
+              const processed = data.map(v => ({
+                  ...v,
+                  year: v.year ? parseInt(String(v.year).replace(/\D/g, '').substring(0, 4)) : new Date().getFullYear()
+              }));
+              results.push(...processed);
+          }
+        } catch (e) {
+          console.error("Erro no parse do JSON do Veículo", e);
         }
       }
     } catch (error) {
-      console.error("Erro ao extrair veículo", error);
+      console.error("Erro na API do Gemini para Veículo", error);
     }
   }
   return results;
@@ -182,13 +190,13 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
   for (const file of files) {
     try {
       let contentPart: any;
-      let prompt = "Extraia os dados da Notificação de Autuação ou Imposição de Penalidade (Multa). Retorne JSON Array.";
+      let prompt = "Analise este documento de Multa/Auto de Infração e extraia todos os dados disponíveis em um ARRAY JSON.";
       let originalFileData: string | undefined;
       let originalMimeType: string | undefined;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
-        contentPart = { text: `Dados Excel:\n${textData}` };
+        contentPart = { text: `Dados:\n${textData}` };
       } else {
         const part = await fileToPart(file);
         contentPart = part;
@@ -197,7 +205,7 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-3-flash-preview',
         contents: {
             parts: [
                 contentPart,
@@ -223,25 +231,30 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
                     location: { type: Type.STRING },
                     points: { type: Type.INTEGER },
                     observations: { type: Type.STRING, nullable: true },
-                }
+                },
+                required: ["autoInfraction", "plate"]
             }
           }
         }
       });
       
       if (response.text) {
-        const data = JSON.parse(response.text);
-        if (Array.isArray(data)) {
-            const mapped = data.map(item => ({
-                ...item,
-                fileData: originalFileData,
-                fileMimeType: originalMimeType
-            }));
-            results.push(...mapped);
+        try {
+          const data = JSON.parse(response.text);
+          if (Array.isArray(data)) {
+              const mapped = data.map(item => ({
+                  ...item,
+                  fileData: originalFileData,
+                  fileMimeType: originalMimeType
+              }));
+              results.push(...mapped);
+          }
+        } catch (e) {
+          console.error("Erro no parse do JSON da Multa", e);
         }
       }
     } catch (error) {
-      console.error("Erro ao extrair multas", error);
+      console.error("Erro na API do Gemini para Multas", error);
     }
   }
   return results;
@@ -253,17 +266,17 @@ export const extractDetranCodesFromExcel = async (files: File[]): Promise<Partia
     for (const file of files) {
       try {
         let contentPart: any;
-        let prompt = "Extraia os códigos de infração do Detran. Retorne JSON.";
+        let prompt = "Extraia códigos de infração do Detran para um ARRAY JSON.";
 
         if (isExcel(file)) {
            const textData = await excelToText(file);
-           contentPart = { text: `Dados Excel:\n${textData}` };
+           contentPart = { text: `Dados:\n${textData}` };
         } else {
            contentPart = await fileToPart(file);
         }
 
         const response = await ai.models.generateContent({
-          model: 'gemini-flash-latest',
+          model: 'gemini-3-flash-preview',
           contents: {
               parts: [
                   contentPart,
@@ -288,11 +301,15 @@ export const extractDetranCodesFromExcel = async (files: File[]): Promise<Partia
         });
         
         if (response.text) {
-          const data = JSON.parse(response.text);
-          if (Array.isArray(data)) results.push(...data);
+          try {
+            const data = JSON.parse(response.text);
+            if (Array.isArray(data)) results.push(...data);
+          } catch (e) {
+            console.error("Erro no parse do JSON Detran", e);
+          }
         }
       } catch (error) {
-        console.error("Erro ao extrair códigos Detran", error);
+        console.error("Erro na API do Gemini para Detran", error);
       }
     }
     return results;
