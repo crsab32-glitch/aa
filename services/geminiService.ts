@@ -55,18 +55,23 @@ export const extractDriversFromFiles = async (files: File[]): Promise<Partial<Dr
   for (const file of files) {
     try {
       let contentPart: any;
-      let prompt = "Extract driver license (CNH) data. Return JSON list with keys: name, cpf, cnhNumber, validityDate (YYYY-MM-DD format).";
+      let prompt = `Extraia dados da CNH (Carteira Nacional de Habilitação) deste documento. 
+      Retorne um JSON contendo uma lista de objetos com as chaves: 
+      - 'name': Nome completo
+      - 'cpf': CPF (apenas números)
+      - 'cnhNumber': Número de Registro
+      - 'validityDate': Data de Validade no formato YYYY-MM-DD
+      Caso seja um PDF, leia todas as páginas.`;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
         contentPart = { text: `Data from Excel/CSV:\n${textData}` };
-        prompt += " The input is structured text data.";
       } else {
         contentPart = await fileToPart(file);
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: {
             parts: [
                 contentPart,
@@ -95,7 +100,7 @@ export const extractDriversFromFiles = async (files: File[]): Promise<Partial<Dr
         if (Array.isArray(data)) results.push(...data);
       }
     } catch (error) {
-      console.error("Error extracting driver data", error);
+      console.error("Erro ao extrair motorista", error);
     }
   }
   return results;
@@ -107,31 +112,28 @@ export const extractVehiclesFromFiles = async (files: File[]): Promise<Partial<V
   for (const file of files) {
     try {
       let contentPart: any;
+      let prompt = `Extraia dados do CRLV (Certificado de Registro e Licenciamento de Veículo) brasileiro. 
+      Este documento pode ser uma foto ou um PDF (CRLV-e).
+      Procure pelos campos:
+      - 'plate': Placa (ex: ABC1234 ou ABC1D23)
+      - 'renavam': Código RENAVAM (apenas números)
+      - 'chassis': Chassi (17 caracteres)
+      - 'brand': Marca
+      - 'model': Modelo
+      - 'year': Ano Modelo (use o ano mais recente se houver Fabricação/Modelo)
       
-      // Prompt extremamente detalhado para CRLV Digital Brasileiro
-      let prompt = `Extract data from the Brazilian Vehicle Document (CRLV). 
-      Look for:
-      - 'plate' (Placa do veículo, e.g., ABC1D23)
-      - 'renavam' (Código RENAVAM, usually 11 digits)
-      - 'chassis' (Número do CHASSI, usually 17 characters)
-      - 'brand' (Marca do fabricante, e.g., FIAT, VW, FORD)
-      - 'model' (Modelo do veículo, e.g., GOL, UNO, ONIX)
-      - 'year' (Ano do Modelo / Ano Fabricação, e.g., 2020)
-      
-      IMPORTANT: Brand and Model are often joined as 'MARCA/MODELO' (e.g., 'VW/GOL'). Separate them.
-      If year is found as '2019/2020', use the second part (2020).
-      Return a JSON ARRAY.`;
+      Importante: Se o campo 'MARCA/MODELO' estiver junto, separe-os.
+      Retorne um ARRAY JSON.`;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
-        contentPart = { text: `Data from Excel/CSV:\n${textData}` };
-        prompt += " The input is structured text data.";
+        contentPart = { text: `Dados de Excel:\n${textData}` };
       } else {
         contentPart = await fileToPart(file);
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: {
             parts: [
                 contentPart,
@@ -150,9 +152,8 @@ export const extractVehiclesFromFiles = async (files: File[]): Promise<Partial<V
                     chassis: { type: Type.STRING },
                     brand: { type: Type.STRING },
                     model: { type: Type.STRING },
-                    year: { type: Type.STRING } // Use STRING to handle "2019/2020" and parse later
-                },
-                required: ["plate", "renavam"]
+                    year: { type: Type.STRING }
+                }
             }
           }
         }
@@ -163,14 +164,13 @@ export const extractVehiclesFromFiles = async (files: File[]): Promise<Partial<V
         if (Array.isArray(data)) {
             const processed = data.map(v => ({
                 ...v,
-                // Garantir que o ano seja um número
-                year: v.year ? parseInt(v.year.split('/')[v.year.split('/').length - 1]) : new Date().getFullYear()
+                year: v.year ? parseInt(String(v.year).split('/')[String(v.year).split('/').length - 1]) : new Date().getFullYear()
             }));
             results.push(...processed);
         }
       }
     } catch (error) {
-      console.error("Error extracting vehicle data", error);
+      console.error("Erro ao extrair veículo", error);
     }
   }
   return results;
@@ -182,14 +182,13 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
   for (const file of files) {
     try {
       let contentPart: any;
-      let prompt = "Extract traffic fine (multa) data. Return JSON list. Map 'autoInfraction' to the fine number/code. 'indicatesDriver' should be boolean.";
+      let prompt = "Extraia os dados da Notificação de Autuação ou Imposição de Penalidade (Multa). Retorne JSON Array.";
       let originalFileData: string | undefined;
       let originalMimeType: string | undefined;
 
       if (isExcel(file)) {
         const textData = await excelToText(file);
-        contentPart = { text: `Data from Excel/CSV:\n${textData}` };
-        prompt += " The input is structured text data.";
+        contentPart = { text: `Dados Excel:\n${textData}` };
       } else {
         const part = await fileToPart(file);
         contentPart = part;
@@ -198,7 +197,7 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: {
             parts: [
                 contentPart,
@@ -242,7 +241,7 @@ export const extractFinesFromFiles = async (files: File[]): Promise<Partial<Fine
         }
       }
     } catch (error) {
-      console.error("Error extracting fine data", error);
+      console.error("Erro ao extrair multas", error);
     }
   }
   return results;
@@ -254,18 +253,17 @@ export const extractDetranCodesFromExcel = async (files: File[]): Promise<Partia
     for (const file of files) {
       try {
         let contentPart: any;
-        let prompt = "Extract Detran infraction codes, descriptions, values, and points from this list. Return JSON.";
+        let prompt = "Extraia os códigos de infração do Detran. Retorne JSON.";
 
         if (isExcel(file)) {
            const textData = await excelToText(file);
-           contentPart = { text: `Data from Excel/CSV:\n${textData}` };
-           prompt += " The input is structured text data. Columns might be named 'Código', 'Infração', 'Valor', 'Pontos'.";
+           contentPart = { text: `Dados Excel:\n${textData}` };
         } else {
            contentPart = await fileToPart(file);
         }
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-flash-latest',
           contents: {
               parts: [
                   contentPart,
@@ -294,7 +292,7 @@ export const extractDetranCodesFromExcel = async (files: File[]): Promise<Partia
           if (Array.isArray(data)) results.push(...data);
         }
       } catch (error) {
-        console.error("Error extracting detran data", error);
+        console.error("Erro ao extrair códigos Detran", error);
       }
     }
     return results;

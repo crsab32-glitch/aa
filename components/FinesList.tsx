@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Fine, Driver, Vehicle } from '../types';
 import { getFines, getDrivers, getVehicles } from '../services/storageService';
-import { FileText, FileCheck, Eye } from 'lucide-react';
+import { FileText, FileCheck, Eye, AlertCircle } from 'lucide-react';
 import { ReceiptModal } from './ReceiptModal';
 import { FileViewerModal } from './FileViewerModal';
 
@@ -13,13 +13,17 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
   const [fines, setFines] = useState<Fine[]>([]);
   const [receiptFine, setReceiptFine] = useState<Fine | null>(null);
   const [viewingFileFine, setViewingFileFine] = useState<Fine | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = () => {
-    setFines(getFines());
-    setDrivers(getDrivers());
-    setVehicles(getVehicles());
+    try {
+      const data = getFines();
+      setFines(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      console.error("Erro ao carregar lista de multas:", err);
+      setError("Falha ao carregar dados do banco local.");
+    }
   };
 
   useEffect(() => {
@@ -28,11 +32,31 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length !== 3) return dateStr;
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
+    try {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        return dateStr;
+    }
   };
+
+  if (error) {
+    return (
+        <div className="p-12 text-center bg-white rounded-lg shadow">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-slate-800">Erro no Sistema</h2>
+            <p className="text-slate-500 mt-2">{error}</p>
+            <button 
+                onClick={() => window.location.reload()}
+                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+                Recarregar Página
+            </button>
+        </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-md max-w-7xl mx-auto min-h-[500px]">
@@ -40,7 +64,7 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
         <FileText className="w-6 h-6 text-slate-600" /> Gestão de Multas
       </h2>
       <p className="text-sm text-slate-500 mb-4">
-        <strong>Duplo clique</strong> em uma linha para abrir o cadastro e editar | <strong>Recibo</strong> para ciência | <strong>Visualizar</strong> documento original.
+        <strong>Duplo clique</strong> em uma linha para editar | <strong>Recibo</strong> para ciência | <strong>Visualizar</strong> documento.
       </p>
 
       <div className="overflow-x-auto border rounded-lg">
@@ -59,20 +83,19 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
              {fines.length === 0 ? (
-                 <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">Nenhuma multa registrada.</td></tr>
+                 <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400 italic">Nenhuma multa registrada.</td></tr>
              ) : (
                 fines.map(f => (
                     <tr 
                         key={f.id} 
                         onDoubleClick={() => onEditFine(f)}
                         className="hover:bg-blue-50 cursor-pointer transition"
-                        title="Duplo clique para editar no formulário"
                     >
                         <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setReceiptFine(f); }}
                             className="p-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-blue-600 transition"
-                            title="Gerar Recibo de Ciência"
+                            title="Gerar Recibo"
                           >
                             <FileCheck size={18} />
                           </button>
@@ -80,7 +103,7 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
                             <button 
                               onClick={(e) => { e.stopPropagation(); setViewingFileFine(f); }}
                               className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-slate-600 transition"
-                              title="Visualizar Documento Original"
+                              title="Visualizar Original"
                             >
                               <Eye size={18} />
                             </button>

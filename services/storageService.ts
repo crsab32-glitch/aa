@@ -9,6 +9,17 @@ const KEYS = {
   CURRENT_USER: 'fg_session'
 };
 
+// Helper para leitura segura
+const safeGet = <T>(key: string, defaultValue: T): T => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
+  } catch (e) {
+    console.error(`Erro ao ler ${key} do localStorage`, e);
+    return defaultValue;
+  }
+};
+
 // --- Auth ---
 export const saveUser = (user: User): boolean => {
   const users = getUsers();
@@ -17,10 +28,7 @@ export const saveUser = (user: User): boolean => {
   return true;
 };
 
-export const getUsers = (): User[] => {
-  const data = localStorage.getItem(KEYS.USERS);
-  return data ? JSON.parse(data) : [];
-};
+export const getUsers = (): User[] => safeGet(KEYS.USERS, []);
 
 export const login = (username: string, pass: string): User | null => {
   const users = getUsers();
@@ -32,20 +40,14 @@ export const login = (username: string, pass: string): User | null => {
   return null;
 };
 
-export const getCurrentUser = (): User | null => {
-  const data = localStorage.getItem(KEYS.CURRENT_USER);
-  return data ? JSON.parse(data) : null;
-};
+export const getCurrentUser = (): User | null => safeGet(KEYS.CURRENT_USER, null);
 
 export const logout = () => {
   localStorage.removeItem(KEYS.CURRENT_USER);
 };
 
 // --- Drivers ---
-export const getDrivers = (): Driver[] => {
-  const data = localStorage.getItem(KEYS.DRIVERS);
-  return data ? JSON.parse(data) : [];
-};
+export const getDrivers = (): Driver[] => safeGet(KEYS.DRIVERS, []);
 
 export const saveDriver = (driver: Driver): boolean => {
   const drivers = getDrivers();
@@ -64,10 +66,7 @@ export const updateDriver = (driver: Driver): void => {
 };
 
 // --- Vehicles ---
-export const getVehicles = (): Vehicle[] => {
-  const data = localStorage.getItem(KEYS.VEHICLES);
-  return data ? JSON.parse(data) : [];
-};
+export const getVehicles = (): Vehicle[] => safeGet(KEYS.VEHICLES, []);
 
 export const saveVehicle = (vehicle: Vehicle): boolean => {
   const vehicles = getVehicles();
@@ -86,10 +85,7 @@ export const updateVehicle = (vehicle: Vehicle): void => {
 };
 
 // --- Detran Codes ---
-export const getDetranCodes = (): DetranCode[] => {
-  const data = localStorage.getItem(KEYS.DETRAN);
-  return data ? JSON.parse(data) : [];
-};
+export const getDetranCodes = (): DetranCode[] => safeGet(KEYS.DETRAN, []);
 
 export const saveDetranCode = (code: DetranCode): boolean => {
   const codes = getDetranCodes();
@@ -103,10 +99,7 @@ export const findDetranCode = (codeStr: string): DetranCode | undefined => {
 };
 
 // --- Fines ---
-export const getFines = (): Fine[] => {
-  const data = localStorage.getItem(KEYS.FINES);
-  return data ? JSON.parse(data) : [];
-};
+export const getFines = (): Fine[] => safeGet(KEYS.FINES, []);
 
 export const saveFine = (fine: Fine): boolean => {
   const fines = getFines();
