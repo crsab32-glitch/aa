@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DriverForm } from './components/DriverForm';
@@ -8,9 +7,8 @@ import { FineForm } from './components/FineForm';
 import { FinesList } from './components/FinesList';
 import { FinesSearch } from './components/FinesSearch';
 import { LoginForm } from './components/LoginForm';
-import { AppView, User, Driver } from './types';
+import { AppView, User, Driver, Fine } from './types';
 import { getCurrentUser, logout, getDrivers } from './services/storageService';
-// Added CheckCircle to imports to fix "Cannot find name 'CheckCircle'" error
 import { LogOut, User as UserIcon, Bell, AlertCircle, AlertTriangle, X, CheckCircle } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -19,6 +17,7 @@ const App: React.FC = () => {
   const [isReady, setIsReady] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [alerts, setAlerts] = useState<Driver[]>([]);
+  const [fineToEdit, setFineToEdit] = useState<Fine | null>(null);
 
   const checkAlerts = () => {
     const drivers = getDrivers();
@@ -42,7 +41,6 @@ const App: React.FC = () => {
     if (activeUser) checkAlerts();
   }, []);
 
-  // Recalcular alertas quando a view mudar (pode ter havido novos cadastros)
   useEffect(() => {
     if (user) checkAlerts();
   }, [currentView]);
@@ -52,13 +50,30 @@ const App: React.FC = () => {
     setUser(null);
   };
 
+  const handleEditFine = (fine: Fine) => {
+    setFineToEdit(fine);
+    setCurrentView('fines_entry');
+  };
+
+  const handleViewChange = (view: AppView) => {
+    if (view !== 'fines_entry') {
+      setFineToEdit(null);
+    }
+    setCurrentView(view);
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'drivers': return <DriverForm />;
       case 'vehicles': return <VehicleForm />;
       case 'detran': return <DetranBase />;
-      case 'fines_entry': return <FineForm />;
-      case 'fines_list': return <FinesList />;
+      case 'fines_entry': return (
+        <FineForm 
+          initialFine={fineToEdit} 
+          onFinish={() => { setFineToEdit(null); setCurrentView('fines_list'); }} 
+        />
+      );
+      case 'fines_list': return <FinesList onEditFine={handleEditFine} />;
       case 'fines_search': return <FinesSearch />;
       default: return <DriverForm />;
     }
@@ -72,15 +87,13 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex">
-      <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+      <Sidebar currentView={currentView} setCurrentView={handleViewChange} />
       
       <main className="flex-1 ml-64 flex flex-col h-screen relative">
-        {/* Top Header */}
         <header className="bg-white border-b px-8 py-4 flex justify-between items-center no-print z-50">
           <h2 className="text-slate-500 font-medium">Bem-vindo, <span className="text-slate-900 font-bold">{user.name}</span></h2>
           
           <div className="flex items-center gap-6">
-            {/* Notifications Bell */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -157,7 +170,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Dynamic Content */}
         <div className="flex-1 p-8 overflow-y-auto bg-slate-50" onClick={() => setShowNotifications(false)}>
           <div className="max-w-7xl mx-auto pb-12">
             {renderContent()}

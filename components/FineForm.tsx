@@ -1,23 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { FileWarning, Upload, AlertCircle, CheckCircle, Search, AlertTriangle } from 'lucide-react';
+import { FileWarning, Upload, AlertCircle, CheckCircle, Search, Save, X } from 'lucide-react';
 import { Fine, Vehicle, Driver } from '../types';
-import { saveFine, findDetranCode, getDrivers, getVehicles } from '../services/storageService';
+import { saveFine, updateFine, findDetranCode, getDrivers, getVehicles } from '../services/storageService';
 import { extractFinesFromFiles } from '../services/geminiService';
 
-export const FineForm: React.FC = () => {
+interface FineFormProps {
+  initialFine?: Fine | null;
+  onFinish?: () => void;
+}
+
+export const FineForm: React.FC<FineFormProps> = ({ initialFine, onFinish }) => {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>(getDrivers());
   const [vehicles, setVehicles] = useState<Vehicle[]>(getVehicles());
   const [selectedDriverData, setSelectedDriverData] = useState<Driver | null>(null);
   
-  const [formData, setFormData] = useState<Partial<Fine>>({
+  const emptyForm: Partial<Fine> = {
     autoInfraction: '', date: '', code: '', description: '', value: 0, organ: '', 
     indicatesDriver: false, location: '', points: 0, payDouble: false, 
     observations: '', paymentStatus: 'PENDING', plate: '', driverName: ''
-  });
+  };
 
-  // Check CNH status of selected driver
+  const [formData, setFormData] = useState<Partial<Fine>>(emptyForm);
+
+  useEffect(() => {
+    if (initialFine) {
+      setFormData(initialFine);
+      setMsg({ type: 'success', text: 'Editando infração carregada da lista.' });
+    } else {
+      setFormData(emptyForm);
+      setMsg(null);
+    }
+  }, [initialFine]);
+
   useEffect(() => {
     if (formData.driverName) {
       const driver = drivers.find(d => d.name === formData.driverName);
@@ -32,15 +48,11 @@ export const FineForm: React.FC = () => {
     return new Date(dateStr) < new Date();
   };
 
-  // Auto-import or clear description when Code changes
   useEffect(() => {
+    if (initialFine) return; // Não auto-preencher se estivermos editando
+
     if (!formData.code || formData.code.trim() === '') {
-      setFormData(prev => ({
-        ...prev,
-        description: '',
-        value: 0,
-        points: 0
-      }));
+      setFormData(prev => ({ ...prev, description: '', value: 0, points: 0 }));
       return;
     }
 
@@ -58,7 +70,7 @@ export const FineForm: React.FC = () => {
             }));
         }
     }
-  }, [formData.code]);
+  }, [formData.code, initialFine]);
 
   const handleToggleDouble = (checked: boolean) => {
     setFormData(prev => {
@@ -96,16 +108,18 @@ export const FineForm: React.FC = () => {
       return;
     }
 
-    const success = saveFine({ ...formData as Fine, id: crypto.randomUUID() });
-    if (success) {
-      setMsg({ type: 'success', text: 'Multa cadastrada com sucesso!' });
-      setFormData({
-        autoInfraction: '', date: '', code: '', description: '', value: 0, organ: '', 
-        indicatesDriver: false, location: '', points: 0, payDouble: false, 
-        observations: '', paymentStatus: 'PENDING', plate: '', driverName: ''
-      });
+    if (initialFine?.id) {
+      updateFine({ ...formData as Fine });
+      setMsg({ type: 'success', text: 'Infração atualizada com sucesso!' });
+      if (onFinish) setTimeout(onFinish, 1500);
     } else {
-      setMsg({ type: 'error', text: 'Erro: Auto de Infração já existe.' });
+      const success = saveFine({ ...formData as Fine, id: crypto.randomUUID() });
+      if (success) {
+        setMsg({ type: 'success', text: 'Multa cadastrada com sucesso!' });
+        setFormData(emptyForm);
+      } else {
+        setMsg({ type: 'error', text: 'Erro: Auto de Infração já existe.' });
+      }
     }
   };
 
@@ -145,13 +159,26 @@ export const FineForm: React.FC = () => {
     <div className="p-6 bg-white rounded-lg shadow-md max-w-6xl mx-auto">
        <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <FileWarning className="w-6 h-6 text-red-600" /> Cadastro de Multas
+            <FileWarning className={`w-6 h-6 ${initialFine ? 'text-blue-600' : 'text-red-600'}`} /> 
+            {initialFine ? 'Editar Infração' : 'Cadastro de Multas'}
         </h2>
         
-        <label className="cursor-pointer bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition flex items-center gap-2 shadow-sm font-bold">
-            {loading ? 'Lendo PDF...' : <><Upload size={16} /> Importar Multa (PDF/Img)</>}
-            <input type="file" multiple className="hidden" accept=".pdf,image/*" onChange={handleImport} disabled={loading} />
-        </label>
+        <div className="flex gap-2">
+            {initialFine && (
+              <button 
+                onClick={onFinish}
+                className="bg-slate-200 text-slate-700 py-2 px-4 rounded-md hover:bg-slate-300 transition flex items-center gap-2 font-bold"
+              >
+                <X size={16} /> Cancelar Edição
+              </button>
+            )}
+            {!initialFine && (
+              <label className="cursor-pointer bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition flex items-center gap-2 shadow-sm font-bold">
+                  {loading ? 'Lendo PDF...' : <><Upload size={16} /> Importar Multa (PDF/Img)</>}
+                  <input type="file" multiple className="hidden" accept=".pdf,image/*" onChange={handleImport} disabled={loading} />
+              </label>
+            )}
+        </div>
       </div>
 
       {msg && (
@@ -206,7 +233,7 @@ export const FineForm: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-slate-700">Auto Infração (ID)</label>
-                    <input name="autoInfraction" value={formData.autoInfraction} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm border p-2" required />
+                    <input name="autoInfraction" value={formData.autoInfraction} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm border p-2" required readOnly={!!initialFine} />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700">Data</label>
@@ -224,8 +251,8 @@ export const FineForm: React.FC = () => {
                 </div>
                 
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700">Descrição (Automática)</label>
-                    <input name="description" value={formData.description} readOnly className="mt-1 block w-full rounded-md border-slate-200 shadow-sm border p-2 bg-slate-100 italic font-medium" />
+                    <label className="block text-sm font-medium text-slate-700">Descrição</label>
+                    <input name="description" value={formData.description} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm border p-2 bg-white" />
                 </div>
                 
                 <div>
@@ -234,7 +261,7 @@ export const FineForm: React.FC = () => {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700">Pontos</label>
-                    <input type="number" name="points" value={formData.points} readOnly className="mt-1 block w-full rounded-md border-slate-200 shadow-sm border p-2 bg-slate-100 font-bold" />
+                    <input type="number" name="points" value={formData.points} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm border p-2 bg-white font-bold" />
                 </div>
              </div>
              
@@ -269,8 +296,8 @@ export const FineForm: React.FC = () => {
              </div>
         </div>
 
-        <button type="submit" className="w-full bg-slate-900 text-white py-4 px-4 rounded-xl hover:bg-slate-800 transition font-black text-lg shadow-2xl hover:scale-[1.01] active:scale-95">
-            CADASTRAR INFRAÇÃO
+        <button type="submit" className={`w-full text-white py-4 px-4 rounded-xl transition font-black text-lg shadow-2xl hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 ${initialFine ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
+            {initialFine ? <><Save size={24} /> ATUALIZAR INFRAÇÃO</> : 'CADASTRAR INFRAÇÃO'}
         </button>
       </form>
     </div>
