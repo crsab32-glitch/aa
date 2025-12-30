@@ -45,8 +45,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-300">
         <div className="bg-blue-600 p-8 text-center">
           <ShieldCheck className="w-16 h-16 text-white mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white uppercase tracking-wider">FleetGuard</h1>
-          <p className="text-blue-100 text-sm mt-2">Gestão Inteligente de Frota</p>
+          <h1 className="text-2xl font-bold text-white uppercase tracking-tight">Controle e Gestão de Multas</h1>
+          <p className="text-blue-100 text-sm mt-2">Gerenciamento Seguro de Frota</p>
         </div>
         
         <form onSubmit={handleSubmit} className="p-8 space-y-6">

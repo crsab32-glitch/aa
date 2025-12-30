@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, FileText, Printer, FileCheck } from 'lucide-react';
+import { Search, User, FileText, Printer, FileCheck, Eye } from 'lucide-react';
 import { Fine, Driver } from '../types';
 import { getFines, getDrivers } from '../services/storageService';
 import { ReceiptModal } from './ReceiptModal';
+import { FileViewerModal } from './FileViewerModal';
 
 export const FinesSearch: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -10,6 +11,7 @@ export const FinesSearch: React.FC = () => {
   const [selectedDriver, setSelectedDriver] = useState<string>('');
   const [filteredFines, setFilteredFines] = useState<Fine[]>([]);
   const [receiptFine, setReceiptFine] = useState<Fine | null>(null);
+  const [viewingFileFine, setViewingFileFine] = useState<Fine | null>(null);
 
   useEffect(() => {
     setDrivers(getDrivers());
@@ -70,7 +72,7 @@ export const FinesSearch: React.FC = () => {
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Recibo</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase">Documentos</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Auto</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Placa</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Data</th>
@@ -83,19 +85,29 @@ export const FinesSearch: React.FC = () => {
                 {filteredFines.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      Nenhuma infração encontrada para este motorista.
+                      Nenhuma infração encontrada.
                     </td>
                   </tr>
                 ) : (
                   filteredFines.map(f => (
                     <tr key={f.id} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
                         <button 
                           onClick={() => setReceiptFine(f)}
-                          className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition border border-blue-200 text-xs font-bold"
+                          className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition border border-blue-200 text-[10px] font-bold"
+                          title="Gerar Recibo"
                         >
-                          <FileCheck size={14} /> GERAR
+                          <FileCheck size={14} /> RECIBO
                         </button>
+                        {f.fileData && (
+                           <button 
+                           onClick={() => setViewingFileFine(f)}
+                           className="flex items-center gap-1 bg-slate-50 text-slate-600 px-2 py-1 rounded hover:bg-slate-100 transition border border-slate-200 text-[10px] font-bold"
+                           title="Ver Arquivo Original"
+                         >
+                           <Eye size={14} /> VER
+                         </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">{f.autoInfraction}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 uppercase">{f.plate}</td>
@@ -128,6 +140,15 @@ export const FinesSearch: React.FC = () => {
 
       {receiptFine && (
         <ReceiptModal fine={receiptFine} onClose={() => setReceiptFine(null)} />
+      )}
+
+      {viewingFileFine && viewingFileFine.fileData && viewingFileFine.fileMimeType && (
+        <FileViewerModal 
+            fileData={viewingFileFine.fileData} 
+            mimeType={viewingFileFine.fileMimeType} 
+            title={viewingFileFine.autoInfraction}
+            onClose={() => setViewingFileFine(null)} 
+        />
       )}
     </div>
   );

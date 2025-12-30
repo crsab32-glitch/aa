@@ -55,7 +55,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ fine, onClose }) => 
           
           <div className="text-center mb-8 border-b-2 border-slate-900 pb-4">
             <h1 className="text-2xl font-black uppercase">Termo de Ciência e Notificação de Infração</h1>
-            <p className="text-sm font-medium mt-1">FLEETGUARD MANAGEMENT SYSTEM</p>
+            <p className="text-sm font-medium mt-1">SISTEMA DE CONTROLE E GESTÃO DE MULTAS</p>
           </div>
 
           <div className="space-y-6 text-justify leading-relaxed">

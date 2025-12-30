@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Fine, Driver, Vehicle } from '../types';
 import { getFines, getDrivers, getVehicles, updateFine, findDetranCode } from '../services/storageService';
-import { FileText, User, X, FileCheck, Save, AlertCircle } from 'lucide-react';
+import { FileText, User, X, FileCheck, Save, Eye, FileSearch } from 'lucide-react';
 import { ReceiptModal } from './ReceiptModal';
+import { FileViewerModal } from './FileViewerModal';
 
 export const FinesList: React.FC = () => {
   const [fines, setFines] = useState<Fine[]>([]);
   const [editingFine, setEditingFine] = useState<Fine | null>(null);
   const [receiptFine, setReceiptFine] = useState<Fine | null>(null);
+  const [viewingFileFine, setViewingFileFine] = useState<Fine | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
@@ -79,14 +81,14 @@ export const FinesList: React.FC = () => {
         <FileText className="w-6 h-6 text-slate-600" /> Gestão de Multas
       </h2>
       <p className="text-sm text-slate-500 mb-4">
-        <strong>Duplo clique</strong> em uma linha para editar os dados da multa | <strong>Ícone</strong> para gerar recibo.
+        <strong>Duplo clique</strong> em uma linha para editar | <strong>Recibo</strong> para ciência | <strong>Visualizar</strong> documento original.
       </p>
 
       <div className="overflow-x-auto border rounded-lg">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-100">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Recibo</th>
+              <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase">Ações</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Auto</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Placa</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">Data</th>
@@ -105,16 +107,24 @@ export const FinesList: React.FC = () => {
                         key={f.id} 
                         onDoubleClick={() => handleDoubleClick(f)}
                         className="hover:bg-blue-50 cursor-pointer transition"
-                        title="Dê um duplo clique para editar"
                     >
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center flex items-center justify-center gap-2">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setReceiptFine(f); }}
-                            className="p-1 hover:bg-blue-200 rounded text-blue-600 transition"
-                            title="Gerar Recibo"
+                            className="p-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-blue-600 transition"
+                            title="Gerar Recibo de Ciência"
                           >
-                            <FileCheck size={20} />
+                            <FileCheck size={18} />
                           </button>
+                          {f.fileData && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setViewingFileFine(f); }}
+                              className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-slate-600 transition"
+                              title="Visualizar Documento Original"
+                            >
+                              <Eye size={18} />
+                            </button>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-slate-900">{f.autoInfraction}</td>
                         <td className="px-4 py-3 text-sm text-slate-600 uppercase">{f.plate}</td>
@@ -143,7 +153,7 @@ export const FinesList: React.FC = () => {
 
       {editingFine && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[110] p-4">
-            <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
                 <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
                     <h3 className="text-lg font-bold flex items-center gap-2">
                       <FileText size={20} className="text-blue-400" /> Editar Infração: {editingFine.autoInfraction}
@@ -223,9 +233,6 @@ export const FinesList: React.FC = () => {
                             {editingFine.payDouble ? 'ISENTO (PAGTO DOBRADO)' : `${editingFine.points} pts`}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-400 italic">
-                          * Alterar "Pagar Dobrado" recalcula automaticamente valor e pontos baseados na tabela Detran.
-                        </p>
                     </div>
 
                     <div>
@@ -236,24 +243,14 @@ export const FinesList: React.FC = () => {
                         onChange={handleEditChange}
                         rows={2}
                         className="w-full rounded-md border-slate-300 border p-2 text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-none"
-                        placeholder="Notas internas sobre esta multa..."
+                        placeholder="Notas internas..."
                       />
                     </div>
                 </div>
 
                 <div className="p-4 bg-slate-50 border-t flex justify-end gap-3">
-                    <button 
-                      onClick={() => setEditingFine(null)} 
-                      className="px-4 py-2 border border-slate-300 rounded text-slate-600 hover:bg-white transition text-sm font-medium"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      onClick={saveChanges} 
-                      className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow-md shadow-blue-200 flex items-center gap-2 text-sm transition"
-                    >
-                      <Save size={16} /> Salvar Alterações
-                    </button>
+                    <button onClick={() => setEditingFine(null)} className="px-4 py-2 border rounded text-slate-600 text-sm">Cancelar</button>
+                    <button onClick={saveChanges} className="px-6 py-2 bg-blue-600 text-white rounded font-bold text-sm">Salvar</button>
                 </div>
             </div>
         </div>
@@ -261,6 +258,15 @@ export const FinesList: React.FC = () => {
 
       {receiptFine && (
         <ReceiptModal fine={receiptFine} onClose={() => setReceiptFine(null)} />
+      )}
+
+      {viewingFileFine && viewingFileFine.fileData && viewingFileFine.fileMimeType && (
+        <FileViewerModal 
+            fileData={viewingFileFine.fileData} 
+            mimeType={viewingFileFine.fileMimeType} 
+            title={viewingFileFine.autoInfraction}
+            onClose={() => setViewingFileFine(null)} 
+        />
       )}
     </div>
   );

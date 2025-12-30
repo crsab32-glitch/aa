@@ -48,6 +48,8 @@ export interface Fine {
   payDouble: boolean;
   observations: string;
   paymentStatus: 'PENDING' | 'PAID' | 'CANCELED';
+  fileData?: string;      // Base64 do arquivo original
+  fileMimeType?: string;  // Tipo do arquivo (application/pdf, image/jpeg, etc)
 }
 
 export type AppView = 'drivers' | 'vehicles' | 'detran' | 'fines_entry' | 'fines_list' | 'fines_search';

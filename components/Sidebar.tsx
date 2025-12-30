@@ -20,7 +20,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
   return (
     <div className="w-64 bg-slate-900 text-white min-h-screen p-4 flex flex-col fixed left-0 top-0 no-print">
       <div className="mb-8 px-2">
-        <h1 className="text-2xl font-bold tracking-wider text-blue-400">Fleet<span className="text-white">Guard</span></h1>
+        <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
+          Controle e Gestão <span className="text-blue-400">de Multas</span>
+        </h1>
         <p className="text-xs text-slate-400 mt-1">Gerenciamento Inteligente</p>
       </div>
       
@@ -43,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
       </nav>
 
       <div className="mt-auto px-4 py-4 text-xs text-slate-600 border-t border-slate-800">
-        <p>© 2024 FleetGuard</p>
+        <p>© 2024 Controle e Gestão de Multas</p>
         <p>Versão 1.0.0</p>
       </div>
     </div>

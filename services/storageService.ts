@@ -54,6 +54,15 @@ export const saveDriver = (driver: Driver): boolean => {
   return true;
 };
 
+export const updateDriver = (driver: Driver): void => {
+  const drivers = getDrivers();
+  const index = drivers.findIndex(d => d.id === driver.id);
+  if (index !== -1) {
+    drivers[index] = driver;
+    localStorage.setItem(KEYS.DRIVERS, JSON.stringify(drivers));
+  }
+};
+
 // --- Vehicles ---
 export const getVehicles = (): Vehicle[] => {
   const data = localStorage.getItem(KEYS.VEHICLES);
@@ -65,6 +74,15 @@ export const saveVehicle = (vehicle: Vehicle): boolean => {
   if (vehicles.some(v => v.plate === vehicle.plate)) return false;
   localStorage.setItem(KEYS.VEHICLES, JSON.stringify([...vehicles, vehicle]));
   return true;
+};
+
+export const updateVehicle = (vehicle: Vehicle): void => {
+  const vehicles = getVehicles();
+  const index = vehicles.findIndex(v => v.id === vehicle.id);
+  if (index !== -1) {
+    vehicles[index] = vehicle;
+    localStorage.setItem(KEYS.VEHICLES, JSON.stringify(vehicles));
+  }
 };
 
 // --- Detran Codes ---
