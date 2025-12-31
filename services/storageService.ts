@@ -18,8 +18,6 @@ const safeGet = <T>(key: string, defaultValue: T): T => {
     return parsed || defaultValue;
   } catch (e) {
     console.error(`Erro crítico ao ler ${key} do localStorage. Resetando para valor padrão.`, e);
-    // Em caso de erro de parse, pode ser útil limpar o campo para não travar o app no próximo reload
-    // localStorage.removeItem(key); 
     return defaultValue;
   }
 };
@@ -72,6 +70,12 @@ export const updateDriver = (driver: Driver): void => {
   }
 };
 
+export const deleteDriver = (id: string): void => {
+  const drivers = getDrivers();
+  const filtered = drivers.filter(d => d.id !== id);
+  localStorage.setItem(KEYS.DRIVERS, JSON.stringify(filtered));
+};
+
 // --- Vehicles ---
 export const getVehicles = (): Vehicle[] => {
   const vehicles = safeGet<Vehicle[]>(KEYS.VEHICLES, []);
@@ -92,6 +96,12 @@ export const updateVehicle = (vehicle: Vehicle): void => {
     vehicles[index] = vehicle;
     localStorage.setItem(KEYS.VEHICLES, JSON.stringify(vehicles));
   }
+};
+
+export const deleteVehicle = (id: string): void => {
+  const vehicles = getVehicles();
+  const filtered = vehicles.filter(v => v.id !== id);
+  localStorage.setItem(KEYS.VEHICLES, JSON.stringify(filtered));
 };
 
 // --- Detran Codes ---

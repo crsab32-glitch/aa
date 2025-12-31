@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Plus, AlertCircle, CheckCircle, Search, Calendar, AlertTriangle, X, Save, UserCheck } from 'lucide-react';
+import { Upload, Plus, AlertCircle, CheckCircle, Search, Calendar, AlertTriangle, X, Save, UserCheck, Trash2 } from 'lucide-react';
 import { Driver } from '../types';
-import { saveDriver, getDrivers, updateDriver } from '../services/storageService';
+import { saveDriver, getDrivers, updateDriver, deleteDriver } from '../services/storageService';
 import { extractDriversFromFiles } from '../services/geminiService';
 
 export const DriverForm: React.FC = () => {
@@ -118,6 +118,15 @@ export const DriverForm: React.FC = () => {
     }
   };
 
+  const handleDelete = (id: string, name: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o motorista ${name}?`)) {
+      deleteDriver(id);
+      refreshList();
+      if (editingId === id) clearForm();
+      setMsg({ type: 'success', text: 'Motorista excluído com sucesso.' });
+    }
+  };
+
   const handleDoubleClick = (d: Driver) => {
     setFormData({ ...d });
     setEditingId(d.id);
@@ -214,6 +223,7 @@ export const DriverForm: React.FC = () => {
             <table className="min-w-full divide-y divide-slate-100">
                 <thead className="bg-slate-50/50">
                     <tr>
+                        <th className="px-6 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Ações</th>
                         <th className="px-6 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Nome</th>
                         <th className="px-6 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">CPF</th>
                         <th className="px-6 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Registro CNH</th>
@@ -223,7 +233,7 @@ export const DriverForm: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
                     {drivers.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">Nenhum motorista cadastrado no sistema.</td></tr>
+                        <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">Nenhum motorista cadastrado no sistema.</td></tr>
                     ) : (
                         drivers.map(d => {
                             const status = getCNHStatus(d.validityDate);
@@ -235,6 +245,15 @@ export const DriverForm: React.FC = () => {
                                   className="hover:bg-blue-50 cursor-pointer transition group"
                                   title="Duplo clique para editar"
                                 >
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(d.id, d.name); }}
+                                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition shadow-sm border border-transparent hover:border-red-100"
+                                            title="Excluir Motorista"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
                                     <td className="px-6 py-4 text-sm font-bold text-slate-800">{d.name}</td>
                                     <td className="px-6 py-4 text-sm text-slate-500">{d.cpf}</td>
                                     <td className="px-6 py-4 text-sm text-slate-500 font-mono text-xs">{d.cnhNumber}</td>

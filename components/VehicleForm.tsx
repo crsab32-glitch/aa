@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Car, AlertCircle, CheckCircle, X, Save } from 'lucide-react';
+import { Upload, Car, AlertCircle, CheckCircle, X, Save, Trash2 } from 'lucide-react';
 import { Vehicle } from '../types';
-import { saveVehicle, getVehicles, updateVehicle } from '../services/storageService';
+import { saveVehicle, getVehicles, updateVehicle, deleteVehicle } from '../services/storageService';
 import { extractVehiclesFromFiles } from '../services/geminiService';
 
 export const VehicleForm: React.FC = () => {
@@ -28,6 +28,7 @@ export const VehicleForm: React.FC = () => {
   const clearForm = () => {
     setFormData({ plate: '', renavam: '', chassis: '', brand: '', model: '', year: new Date().getFullYear() });
     setEditingId(null);
+    setMsg(null);
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -108,6 +109,15 @@ export const VehicleForm: React.FC = () => {
       setMsg({ type: 'error', text: 'Falha na importação via IA.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = (id: string, plate: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir o veículo de placa ${plate}?`)) {
+      deleteVehicle(id);
+      refreshList();
+      if (editingId === id) clearForm();
+      setMsg({ type: 'success', text: 'Veículo excluído com sucesso.' });
     }
   };
 
@@ -219,6 +229,7 @@ export const VehicleForm: React.FC = () => {
             <table className="min-w-full divide-y divide-slate-100">
                 <thead className="bg-slate-50/50">
                     <tr>
+                        <th className="px-6 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Ações</th>
                         <th className="px-6 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Placa</th>
                         <th className="px-6 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Renavam</th>
                         <th className="px-6 py-4 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">Chassis</th>
@@ -228,7 +239,7 @@ export const VehicleForm: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
                     {vehicles.length === 0 ? (
-                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">Nenhum veículo cadastrado no sistema.</td></tr>
+                        <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">Nenhum veículo cadastrado no sistema.</td></tr>
                     ) : (
                         vehicles.map(v => (
                             <tr 
@@ -237,6 +248,15 @@ export const VehicleForm: React.FC = () => {
                                 className="hover:bg-blue-50/50 cursor-pointer transition group"
                                 title="Dê um duplo clique para editar"
                             >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(v.id, v.plate); }}
+                                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition shadow-sm border border-transparent hover:border-red-100"
+                                        title="Excluir Veículo"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
                                 <td className="px-6 py-4 text-sm font-black text-slate-800 uppercase tracking-tighter">{v.plate}</td>
                                 <td className="px-6 py-4 text-sm text-slate-500 font-medium">{v.renavam}</td>
                                 <td className="px-6 py-4 text-sm text-slate-400 uppercase font-mono tracking-tighter text-xs">
