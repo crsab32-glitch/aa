@@ -9,13 +9,17 @@ const KEYS = {
   CURRENT_USER: 'fg_session'
 };
 
-// Helper para leitura segura
+// Helper para leitura segura e resiliente
 const safeGet = <T>(key: string, defaultValue: T): T => {
   try {
     const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultValue;
+    if (!data) return defaultValue;
+    const parsed = JSON.parse(data);
+    return parsed || defaultValue;
   } catch (e) {
-    console.error(`Erro ao ler ${key} do localStorage`, e);
+    console.error(`Erro crítico ao ler ${key} do localStorage. Resetando para valor padrão.`, e);
+    // Em caso de erro de parse, pode ser útil limpar o campo para não travar o app no próximo reload
+    // localStorage.removeItem(key); 
     return defaultValue;
   }
 };
@@ -47,7 +51,10 @@ export const logout = () => {
 };
 
 // --- Drivers ---
-export const getDrivers = (): Driver[] => safeGet(KEYS.DRIVERS, []);
+export const getDrivers = (): Driver[] => {
+  const drivers = safeGet<Driver[]>(KEYS.DRIVERS, []);
+  return Array.isArray(drivers) ? drivers : [];
+};
 
 export const saveDriver = (driver: Driver): boolean => {
   const drivers = getDrivers();
@@ -66,7 +73,10 @@ export const updateDriver = (driver: Driver): void => {
 };
 
 // --- Vehicles ---
-export const getVehicles = (): Vehicle[] => safeGet(KEYS.VEHICLES, []);
+export const getVehicles = (): Vehicle[] => {
+  const vehicles = safeGet<Vehicle[]>(KEYS.VEHICLES, []);
+  return Array.isArray(vehicles) ? vehicles : [];
+};
 
 export const saveVehicle = (vehicle: Vehicle): boolean => {
   const vehicles = getVehicles();
@@ -85,7 +95,10 @@ export const updateVehicle = (vehicle: Vehicle): void => {
 };
 
 // --- Detran Codes ---
-export const getDetranCodes = (): DetranCode[] => safeGet(KEYS.DETRAN, []);
+export const getDetranCodes = (): DetranCode[] => {
+  const codes = safeGet<DetranCode[]>(KEYS.DETRAN, []);
+  return Array.isArray(codes) ? codes : [];
+};
 
 export const saveDetranCode = (code: DetranCode): boolean => {
   const codes = getDetranCodes();
@@ -99,7 +112,10 @@ export const findDetranCode = (codeStr: string): DetranCode | undefined => {
 };
 
 // --- Fines ---
-export const getFines = (): Fine[] => safeGet(KEYS.FINES, []);
+export const getFines = (): Fine[] => {
+  const fines = safeGet<Fine[]>(KEYS.FINES, []);
+  return Array.isArray(fines) ? fines : [];
+};
 
 export const saveFine = (fine: Fine): boolean => {
   const fines = getFines();

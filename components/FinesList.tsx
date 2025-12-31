@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Fine, Driver, Vehicle } from '../types';
 import { getFines, getDrivers, getVehicles } from '../services/storageService';
-import { FileText, FileCheck, Eye, AlertCircle, RefreshCw } from 'lucide-react';
+import { FileText, FileCheck, Eye, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ReceiptModal } from './ReceiptModal';
 import { FileViewerModal } from './FileViewerModal';
 
@@ -20,13 +20,15 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
     setIsRefreshing(true);
     try {
       const data = getFines();
-      // Garante que é um array e remove itens nulos/inválidos
-      const sanitized = Array.isArray(data) ? data.filter(f => f && f.id) : [];
+      // Filtragem defensiva para garantir que apenas objetos válidos sejam processados
+      const sanitized = Array.isArray(data) 
+        ? data.filter(f => f && typeof f === 'object' && f.id) 
+        : [];
       setFines(sanitized);
       setError(null);
     } catch (err) {
       console.error("Erro ao carregar lista de multas:", err);
-      setError("Falha crítica ao carregar dados. Verifique o armazenamento local.");
+      setError("Houve um problema ao carregar os dados armazenados localmente.");
     } finally {
       setIsRefreshing(false);
     }
@@ -50,15 +52,15 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
 
   if (error) {
     return (
-        <div className="p-12 text-center bg-white rounded-lg shadow-xl border-2 border-red-100 max-w-2xl mx-auto">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Erro de Sincronização</h2>
-            <p className="text-slate-500 mt-2 mb-6 font-medium">{error}</p>
+        <div className="p-12 text-center bg-white rounded-xl shadow-lg border border-red-100 max-w-xl mx-auto mt-10">
+            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-black text-slate-800 uppercase">Falha na Listagem</h2>
+            <p className="text-slate-500 mt-2 mb-6">{error}</p>
             <button 
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition font-bold shadow-lg"
+                className="px-8 py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition"
             >
-                Reiniciar Aplicativo
+                Recarregar Sistema
             </button>
         </div>
     );
@@ -80,8 +82,8 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
         </button>
       </div>
       
-      <p className="text-sm text-slate-500 mb-6 bg-slate-50 p-3 rounded border-l-4 border-blue-400">
-        <strong>Dica:</strong> Dê um duplo clique em uma linha para editar no formulário. Use os botões à esquerda para recibos ou visualizar documentos.
+      <p className="text-sm text-slate-500 mb-6 bg-slate-50 p-3 rounded border-l-4 border-blue-500">
+        <strong>Atenção:</strong> Duplo clique em uma linha para editar no formulário de cadastro.
       </p>
 
       <div className="overflow-x-auto border rounded-xl overflow-hidden shadow-sm">
@@ -100,11 +102,11 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
           </thead>
           <tbody className="bg-white divide-y divide-slate-100">
              {fines.length === 0 ? (
-                 <tr><td colSpan={8} className="px-4 py-20 text-center text-slate-400 italic">Nenhuma multa cadastrada ou encontrada.</td></tr>
+                 <tr><td colSpan={8} className="px-4 py-20 text-center text-slate-400 italic">Nenhum registro encontrado.</td></tr>
              ) : (
                 fines.map(f => (
                     <tr 
-                        key={f.id} 
+                        key={f?.id} 
                         onDoubleClick={() => onEditFine(f)}
                         className="hover:bg-blue-50/50 cursor-pointer transition group"
                     >
@@ -116,7 +118,7 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
                           >
                             <FileCheck size={16} />
                           </button>
-                          {f.fileData && (
+                          {f?.fileData && (
                             <button 
                               onClick={(e) => { e.stopPropagation(); setViewingFileFine(f); }}
                               className="p-1.5 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-800 hover:text-white transition shadow-sm"
@@ -126,22 +128,22 @@ export const FinesList: React.FC<FinesListProps> = ({ onEditFine }) => {
                             </button>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm font-black text-slate-900">{f.autoInfraction}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600 uppercase font-bold">{f.plate}</td>
-                        <td className="px-4 py-3 text-sm text-slate-500 font-medium">{formatDate(f.date)}</td>
-                        <td className="px-4 py-3 text-sm text-slate-900 font-bold">R$ {f.value?.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm font-black text-slate-900">{f?.autoInfraction || '---'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600 uppercase font-bold">{f?.plate || '---'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-500 font-medium">{formatDate(f?.date)}</td>
+                        <td className="px-4 py-3 text-sm text-slate-900 font-bold">R$ {f?.value?.toFixed(2) || '0,00'}</td>
                         <td className="px-4 py-3 text-sm text-slate-600">
-                          {f.payDouble ? <span className="text-red-500 font-black">NIC</span> : <span className="font-bold">{f.points}</span>}
+                          {f?.payDouble ? <span className="text-red-500 font-black">NIC</span> : <span className="font-bold">{f?.points || 0}</span>}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
-                            {f.driverName || <span className="text-red-300 italic text-[10px] uppercase">Pendente</span>}
+                            {f?.driverName || <span className="text-red-300 italic text-[10px] uppercase font-bold">Pendente</span>}
                         </td>
                         <td className="px-4 py-3 text-sm">
                             <span className={`px-2 py-0.5 inline-flex text-[9px] leading-5 font-black rounded-md uppercase border
-                                ${f.paymentStatus === 'PAID' ? 'bg-green-50 text-green-700 border-green-200' : 
-                                  f.paymentStatus === 'CANCELED' ? 'bg-slate-50 text-slate-500 border-slate-200' : 
+                                ${f?.paymentStatus === 'PAID' ? 'bg-green-50 text-green-700 border-green-200' : 
+                                  f?.paymentStatus === 'CANCELED' ? 'bg-slate-50 text-slate-500 border-slate-200' : 
                                   'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                                {f.paymentStatus === 'PAID' ? 'Pago' : f.paymentStatus === 'CANCELED' ? 'Cancelado' : 'Pendente'}
+                                {f?.paymentStatus === 'PAID' ? 'Pago' : f?.paymentStatus === 'CANCELED' ? 'Cancelado' : 'Pendente'}
                             </span>
                         </td>
                     </tr>
